@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--resolution', type=int, default=256, help="Image resolution (res x res x 3")
     parser.add_argument('--destination', type=str, default=f"./data/{time():.0f}/", help="Storage path")
     parser.add_argument('--randomize', type=str, nargs='+', default="none", 
-                        help='Randomized options: none or a selection of radius, rotation, fill_color, bg_color, position')
+                        help='Randomized options: none or a selection of radius, aspect_ratio, rotation, fill_color, bg_color, position')
 
     args = parser.parse_args()
 

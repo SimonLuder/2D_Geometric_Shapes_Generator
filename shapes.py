@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 class AbstractShape:
 
-    def __init__(self, destination: str, im_res: int, randomize=["radius", "rotation", "fill_color", "bg_color", "position"]):
+    def __init__(self, destination: str, im_res: int, randomize=["radius", "rotation", "aspect_ratio","fill_color", "bg_color", "position"]):
         self.destination = destination
         self.im_res = im_res
         self.im_shape = (self.im_res, self.im_res, 3)
@@ -27,6 +27,10 @@ class AbstractShape:
             self.rotation = np.deg2rad(np.random.randint(-180, 180))
         else: 
             self.rotation = 0
+        if "aspect_ratio" in self.randomize:
+            self.aspect_ratio = np.random.randint(5, 20) / 10 # W / H ratio
+        else: 
+            self.aspect_ratio = 1
         if "fill_color" in self.randomize:
             self.fill_color = (np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256))
         else: 
@@ -54,14 +58,19 @@ class AbstractShape:
 
     def __generate_prompt(self):
         prompt_parts = []
+
         if "fill_color" in self.randomize:
             prompt_parts.append(f"{self.get_color_name(self.fill_color)} colored")
         if self.shape_name is not None:
             prompt_parts.append(f"{self.shape_name}")
+        if "radius" in self.randomize or "aspect_ratio" in self.randomize or "rotation" in self.randomize:
+            prompt_parts.append("with")
         if "radius" in self.randomize:
-            prompt_parts.append(f"with radius {self.radius}")
+            prompt_parts.append(f"radius {self.radius}")
+        if "aspect_ratio" in self.randomize:
+            prompt_parts.append(f"aspect ratio {self.aspect_ratio}")
         if "rotation" in self.randomize:
-            prompt_parts.append(f"and rotation {np.rad2deg(self.rotation):.0f} degrees")
+            prompt_parts.append(f"rotation {np.rad2deg(self.rotation):.0f} degrees")
         if "position" in self.randomize:
             prompt_parts.append(f"located at ({self.x}, {self.y})")
         if "bg_color" in self.randomize:
@@ -104,11 +113,26 @@ class AbstractShape:
                 )
             )
         return r_coordinates
+    
+    def stretch_shape(self, coordinates):
+        s_coordinates = []
+        for item in coordinates:
+            s_coordinates.append(
+                (
+                    (item[0] - self.x) * self.aspect_ratio + self.x,
+                    item[1]
+                )
+            )
+        return s_coordinates
+        
 
     def draw(self):
         shape_coordinates = self.get_shape_coordinates()
         r_coordinates = []
         for coordinates in shape_coordinates:
+            # strech shape
+            coordinates = self.stretch_shape(coordinates)
+            # rotate shape
             r_coordinates.append(self.rotate_shape(coordinates))
         canvas = np.zeros(self.im_shape, dtype=np.uint8)
         self.fill_background(canvas)
@@ -120,6 +144,8 @@ class AbstractShape:
     
     def set_shape_name(self):
         raise NotImplementedError()
+    
+
     
     
 

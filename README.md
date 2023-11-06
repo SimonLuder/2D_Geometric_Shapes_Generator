@@ -9,6 +9,7 @@ Each image is generated within the following parameters :
 - A fixed size (default 265x265 pixel)
 - A fixed or random background colour (default black)
 - A fixed or random filling colour of each shape (default white)
+- A fixed or random aspect ratio of the shape W / H between 0.5 and 2 (default 1)
 - A fixed or random rotation angle between -180° and 180° (default 0°)
 - A fixed or random position inside of the containing image (default centered)
 - A fixed or random perimeter (default 50% of image height)
@@ -25,7 +26,7 @@ python shape_generator.py
 
 Run the data set generation with customized arguments :
 ```
-python shape_generator.py --size 1000 --resolution 256 --destination ./data/YOUR_DATASET_NAME/ --randomize radius rotation fill_color bg_color position
+python shape_generator.py --size 1000 --resolution 256 --destination ./data/YOUR_DATASET_NAME/ --randomize radius aspect_ratio rotation fill_color bg_color position
 ```
 
 The generation command may accept the following option : 
