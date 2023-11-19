@@ -5,6 +5,7 @@ import os
 import webcolors
 import csv
 from tqdm import tqdm
+from pathlib import Path
 
 class AbstractShape:
 
@@ -17,6 +18,7 @@ class AbstractShape:
         self.radius = None
         self.x = None
         self.y = None
+
 
     def __set_random_params(self):
         if "radius" in self.randomize:
@@ -52,13 +54,13 @@ class AbstractShape:
         
     def __save_drawing(self, image):
         filename = f"{self.__class__.__name__}_{uuid.uuid1()}.png"
-        filepath = os.path.join(self.destination, filename)
+        filepath = os.path.join(self.destination, "images", filename)
         cv2.imwrite(filepath, image)
-        return filename
+        self.file = filepath
+
 
     def __generate_prompt(self):
         prompt_parts = []
-
         if "fill_color" in self.randomize:
             prompt_parts.append(f"{self.get_color_name(self.fill_color)} colored")
         if self.shape_name is not None:
@@ -75,12 +77,17 @@ class AbstractShape:
             prompt_parts.append(f"located at ({self.x}, {self.y})")
         if "bg_color" in self.randomize:
             prompt_parts.append(f"on a {self.get_color_name(self.bg_color)} background")
-        prompt = ' '.join(prompt_parts)
-        return prompt
+        self.prompt = ' '.join(prompt_parts)
+    
+
+    def __get_config(self):
+        return {k:v for k, v in self.__dict__.items()}
+
 
     def get_fill_color(self):
         return self.fill_color
     
+
     def get_color_name(self, requested_colour):
         min_colours = {}
         for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
@@ -92,6 +99,7 @@ class AbstractShape:
         closest_color = min_colours[min(min_colours.keys())]
         return closest_color
     
+
     def fill_background(self, canvas):
         canvas[:, :] = self.bg_color[::-1] # swapped red and blue channel in cv2!
 
@@ -99,9 +107,11 @@ class AbstractShape:
         self.set_shape_name()
         self.__set_random_params()
         image = self.draw()
-        filename = self.__save_drawing(image)
-        prompt = self.__generate_prompt()
-        return filename, prompt
+        self.__save_drawing(image)
+        self.__generate_prompt()
+        config = self.__get_config()
+        return config
+
 
     def rotate_shape(self, coordinates):
         r_coordinates = []
@@ -114,6 +124,7 @@ class AbstractShape:
             )
         return r_coordinates
     
+
     def stretch_shape(self, coordinates):
         s_coordinates = []
         for item in coordinates:
@@ -139,9 +150,11 @@ class AbstractShape:
         self.paint(canvas, r_coordinates)
         return canvas
 
+
     def paint(self, canvas):
         raise NotImplementedError()
     
+
     def set_shape_name(self):
         raise NotImplementedError()
     
@@ -292,24 +305,40 @@ class GeometricShapes:
         Nonagon, Pentagon, Star
     ]
 
-    def __init__(self, destination: str, class_size: int, img_res: int=200, randomize=["radius", "rotation", "fill_color", "bg_color", "position"]):
+    def __init__(self, 
+                 destination: str, 
+                 class_size: int, 
+                 img_res: int=200, 
+                 randomize=["radius", 
+                            "rotation", 
+                            "fill_color", 
+                            "bg_color", 
+                            "position"]
+                 ):
         self.__size__ = class_size
         self.destination = destination
         self.__shapes = [
             generator(destination, img_res, randomize) for generator in self.__GENERATORS__
         ]
-        self.prompts = list()
+        self.labels = list()
 
     def __save_csv(self):
-        with open(os.path.join(self.destination, 'prompts.csv'), 'w') as f:
-            write = csv.writer(f)
-            write.writerows(self.prompts)
+        with open(os.path.join(self.destination, 'labels.csv'), 'w') as f:
+            writer = csv.DictWriter(f, fieldnames=self.labels[0].keys())
+            writer.writeheader()
+            writer.writerows(self.labels)
         
     def generate(self):
+
+        # create dataset folder structure
+        Path(os.path.join(self.destination, "images")).mkdir( parents=True, exist_ok=True )
+
+        # generate labels
         for _ in tqdm(range(self.__size__)):
             for shape in self.__shapes:
-                self.prompts.append(shape.generate())
+                self.labels.append(shape.generate())
 
+        # save labels as csv
         self.__save_csv()
 
             
