@@ -8,6 +8,28 @@ from tqdm import tqdm
 from pathlib import Path
 
 class AbstractShape:
+    """
+    A base class for generating abstract shapes with various attributes.
+
+    Attributes:
+        destination : str
+            The directory where the generated images will be saved.
+        im_res : int
+            The resolution of the generated images.
+        im_shape : tuple
+            The shape of the generated images.
+        randomize : list
+            The attributes of the shapes to randomize. Possible arguments: 
+            "radius", "rotation", "aspect_ratio","fill_color", "bg_color", "position"
+        shape_name : str
+            The name of the shape.
+        radius : int
+            The radius of the shape.
+        x : int
+            The x-coordinate of the shape's center.
+        y : int
+            The y-coordinate of the shape's center.
+    """
 
     def __init__(self, destination: str, im_res: int, randomize=["radius", "rotation", "aspect_ratio","fill_color", "bg_color", "position"]):
         self.destination = destination
@@ -21,6 +43,9 @@ class AbstractShape:
 
 
     def __set_random_params(self):
+        """
+        Sets random parameters for the shape based on the 'self.randomize' attribute.
+        """
         if "radius" in self.randomize:
             self.radius = np.random.randint(int(self.im_res * 0.05), int(self.im_res * 0.4))
         else: 
@@ -30,7 +55,7 @@ class AbstractShape:
         else: 
             self.rotation = 0
         if "aspect_ratio" in self.randomize:
-            self.aspect_ratio = np.random.randint(5, 20) / 10 # W / H ratio
+            self.aspect_ratio = np.random.randint(5, 10) / 10 # W / H ratio
         else: 
             self.aspect_ratio = 1
         if "fill_color" in self.randomize:
@@ -60,6 +85,9 @@ class AbstractShape:
 
 
     def __generate_prompt(self):
+        """
+        Generates a prompt for the shape based on its attributes.
+        """
         prompt_parts = []
         if "fill_color" in self.randomize:
             prompt_parts.append(f"{self.get_color_name(self.fill_color)} colored")
@@ -81,14 +109,29 @@ class AbstractShape:
     
 
     def __get_config(self):
+        """
+        Returns:
+            dict: the class attributes of the shape.
+        """
         return {k:v for k, v in self.__dict__.items()}
 
 
     def get_fill_color(self):
+        """
+        Returns:
+            tuple: the fill color of the shape (B, G, R).
+        """
         return self.fill_color
     
 
     def get_color_name(self, requested_colour):
+        """
+        Returns the name of the closest CSS3 color to the requested color.
+
+        Parameters:
+            requested_colour : tuple
+                The RGB values of the requested color.
+        """
         min_colours = {}
         for key, name in webcolors.CSS3_HEX_TO_NAMES.items():
             r_c, g_c, b_c = webcolors.hex_to_rgb(key)
@@ -101,9 +144,24 @@ class AbstractShape:
     
 
     def fill_background(self, canvas):
+        """
+        Fills the background of the canvas with the shape's background color.
+
+        Parameters:
+            canvas : ndarray
+                The canvas to fill.
+        """
         canvas[:, :] = self.bg_color[::-1] # swapped red and blue channel in cv2!
 
     def generate(self):
+        """
+        Generates the shape, saves it as an image, and returns its configuration. 
+        Call this function to get a new sample from the shape generator.
+
+        Returns:
+            dict: The configuration of the shape.
+        """
+
         self.set_shape_name()
         self.__set_random_params()
         image = self.draw()
@@ -114,6 +172,16 @@ class AbstractShape:
 
 
     def rotate_shape(self, coordinates):
+        """
+        Rotates the shape based on its rotation attribute.
+
+        Parameters:
+            coordinates : list
+                The original coordinates of the shape.
+
+        Returns:
+            list: The rotated coordinates of the shape.
+        """
         r_coordinates = []
         for item in coordinates:
             r_coordinates.append(
@@ -126,6 +194,16 @@ class AbstractShape:
     
 
     def stretch_shape(self, coordinates):
+        """
+        Stretches the shape based on its aspect_ratio attribute.
+
+        Parameters:
+            coordinates : list
+                The original coordinate points of the shape.
+
+        Returns:
+            list: The stretched coordinate points of the shape.
+        """
         s_coordinates = []
         for item in coordinates:
             s_coordinates.append(
@@ -138,6 +216,12 @@ class AbstractShape:
         
 
     def draw(self):
+        """
+        Draws the shape on a canvas and returns the canvas.
+
+        Returns:
+            ndarray: The canvas with the drawn shape.
+        """
         shape_coordinates = self.get_shape_coordinates()
         r_coordinates = []
         for coordinates in shape_coordinates:
@@ -152,10 +236,20 @@ class AbstractShape:
 
 
     def paint(self, canvas):
+        """
+        Paints the shape on the canvas. This method is implemented by the subclass.
+
+        Parameters:
+            canvas : ndarray
+                The canvas to paint on.
+        """
         raise NotImplementedError()
     
 
     def set_shape_name(self):
+        """
+        Sets the name of the shape (labeling reasons). This method is implemented by the subclass.
+        """
         raise NotImplementedError()
     
 
@@ -163,6 +257,12 @@ class AbstractShape:
     
 
 class AbstractPolygonShape(AbstractShape):
+    """
+    A class for generating abstract polygon shapes. This class inherits from the AbstractShape class.
+
+    Methods:
+        paint(canvas, coordinates): Paints the shape on the canvas.
+    """
 
     def paint(self, canvas, coordinates):
         points = []
@@ -183,6 +283,7 @@ class Triangle(AbstractPolygonShape):
     def get_shape_coordinates(self):
         return [[(self.x, self.y - self.radius), (self.x - self.radius, self.y + self.radius), (self.x + self.radius, self.y + self.radius)]]
 
+
 class Square(AbstractPolygonShape):
 
     def set_shape_name(self):
@@ -197,6 +298,7 @@ class Square(AbstractPolygonShape):
             (self.x - half_side, self.y + half_side)
         ]]
 
+
 class Pentagon(AbstractPolygonShape):
 
     def set_shape_name(self):
@@ -209,6 +311,7 @@ class Pentagon(AbstractPolygonShape):
             y = self.radius * np.sin(2 * np.pi * vertex / 5) + self.y
             coordinates.append((x, y))
         return [coordinates]
+
 
 class Hexagon(AbstractPolygonShape):
 
@@ -223,6 +326,7 @@ class Hexagon(AbstractPolygonShape):
             coordinates.append((x, y))
         return [coordinates]
 
+
 class Heptagon(AbstractPolygonShape):
 
     def set_shape_name(self):
@@ -236,6 +340,7 @@ class Heptagon(AbstractPolygonShape):
             coordinates.append((x, y))
         return [coordinates]
 
+
 class Octagon(AbstractPolygonShape):
 
     def set_shape_name(self):
@@ -248,6 +353,7 @@ class Octagon(AbstractPolygonShape):
             y = self.radius * np.sin(2 * np.pi * vertex / 8) + self.y
             coordinates.append((x, y))
         return [coordinates]
+
 
 class Nonagon(AbstractPolygonShape):
 
@@ -299,6 +405,21 @@ class Star(AbstractPolygonShape):
     
 
 class GeometricShapes:
+    """
+    A class to generate geometric shapes and save them as images along with their labels.
+
+    Attributes:
+        __GENERATORS__ : list
+            A list of geometric shape generator classes.
+        __size__ : int
+            The number of instances for each shape to generate.
+        destination : str
+            The directory where the generated images and labels will be saved.
+        __shapes : list
+            A list of geometric shape generator instances.
+        labels : list
+            A list to store the labels of the generated shapes.
+    """
 
     __GENERATORS__ = [
         Triangle, Circle, Heptagon, Octagon, Hexagon, Square,
@@ -323,12 +444,18 @@ class GeometricShapes:
         self.labels = list()
 
     def __save_csv(self):
+        """
+        Saves the labels of the generated shapes as a CSV file in the destination directory.
+        """
         with open(os.path.join(self.destination, 'labels.csv'), 'w') as f:
             writer = csv.DictWriter(f, fieldnames=self.labels[0].keys())
             writer.writeheader()
             writer.writerows(self.labels)
         
     def generate(self):
+        """
+        Generates the geometric shapes, saves them as images, and stores their labels.
+        """
 
         # create dataset folder structure
         Path(os.path.join(self.destination, "images")).mkdir( parents=True, exist_ok=True )
